@@ -1,0 +1,15 @@
+[Unit]
+Description=TUNIX System Coordination Service
+After=network.target
+Before=tunix-system-control.service tunix-power.service tunix-thermal.service tunix-network.service tunix-performance.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/tunix/system_coordinator.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+Also=tunix-system-control.service tunix-power.service tunix-thermal.service tunix-network.service tunix-performance.service

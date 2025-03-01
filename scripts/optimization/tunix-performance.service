@@ -1,0 +1,22 @@
+[Unit]
+Description=TUNIX Performance Analysis Service
+After=tunix-monitor.service tunix-coordinator.service
+Requires=tunix-monitor.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/tunix/performance_analyzer.py
+Restart=always
+RestartSec=30
+Nice=10
+
+# Hardening
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadOnlyPaths=/
+ReadWritePaths=/var/log/tunix/analysis /var/log/tunix/metrics
+
+[Install]
+WantedBy=multi-user.target

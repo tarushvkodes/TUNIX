@@ -1,0 +1,25 @@
+[Unit]
+Description=TUNIX System Control Service
+After=tunix-coordinator.service tunix-monitor.service tunix-performance.service
+Wants=tunix-monitor.service tunix-performance.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/tunix/system_control.py --no-ui
+Restart=always
+RestartSec=30
+
+# Allow service to write to run directory for IPC
+RuntimeDirectory=tunix
+RuntimeDirectoryMode=0755
+
+# Security hardening
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ReadOnlyPaths=/
+ReadWritePaths=/var/log/tunix /var/run/tunix /etc/tunix
+
+[Install]
+WantedBy=multi-user.target

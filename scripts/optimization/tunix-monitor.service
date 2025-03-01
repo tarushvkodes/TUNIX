@@ -1,0 +1,13 @@
+[Unit]
+Description=TUNIX System Monitor Service
+After=network.target
+Requires=tunix-system-control.service tunix-power.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/tunix/system_monitor.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

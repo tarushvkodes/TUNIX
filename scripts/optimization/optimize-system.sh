@@ -165,3 +165,189 @@ main() {
 
 # Run main function
 main
+
+#!/bin/bash
+
+# Setup directories
+mkdir -p /etc/tunix/{config,hardware,power,thermal,network/routing,monitor,diagnostics,system-control}
+mkdir -p /var/log/tunix
+mkdir -p /usr/local/lib/tunix
+mkdir -p /usr/local/bin
+
+# Install required packages
+apt-get update
+apt-get install -y \
+    python3-psutil \
+    python3-systemd \
+    python3-daemon \
+    python3-curses \
+    python3-numpy \
+    ethtool \
+    iw \
+    tlp \
+    powertop \
+    lm-sensors
+
+# Copy Python scripts to system location
+SCRIPTS=(
+    "hardware_profile.py"
+    "power_manager.py"
+    "system_diagnostics.py"
+    "system_monitor.py"
+    "network_monitor.py"
+    "network_optimizer.py"
+    "network_routing.py"
+    "performance_analyzer.py"
+    "performance_monitor.py"
+    "thermal_control.py"
+    "system_config.py"
+    "system_coordinator.py"
+)
+
+for script in "${SCRIPTS[@]}"; do
+    cp "$script" /usr/local/lib/tunix/
+    chmod +x "/usr/local/lib/tunix/$script"
+done
+
+# Install CLI tools
+cp tunix-monitor-cli.py /usr/local/bin/tunix-monitor
+chmod +x /usr/local/bin/tunix-monitor
+
+# Install systemd services
+SERVICES=(
+    "tunix-system-control.service"
+    "tunix-power.service"
+    "tunix-thermal.service"
+    "tunix-network.service"
+    "tunix-network-routing.service"
+    "tunix-monitor.service"
+    "tunix-performance.service"
+    "tunix-optimize.service"
+    "tunix-coordinator.service"
+)
+
+for service in "${SERVICES[@]}"; do
+    cp "$service" /etc/systemd/system/
+done
+
+# Create default configurations
+cat > /etc/tunix/config/system_config.json << EOF
+{
+    "version": "1.0.0",
+    "optimization": {
+        "power_management": {
+            "enabled": true,
+            "default_profile": "balanced",
+            "battery_threshold": 20,
+            "thermal_threshold": 80
+        },
+        "thermal_control": {
+            "enabled": true,
+            "prediction_enabled": true,
+            "target_temp": 70,
+            "warning_temp": 80,
+            "critical_temp": 85
+        },
+        "network": {
+            "enabled": true,
+            "auto_tune": true,
+            "bbr_enabled": true,
+            "buffer_autoscale": true
+        },
+        "performance": {
+            "io_scheduler": "bfq",
+            "swappiness": 60,
+            "vfs_cache_pressure": 100,
+            "dirty_ratio": 20
+        }
+    },
+    "monitoring": {
+        "enabled": true,
+        "interval": 1,
+        "log_retention_days": 7
+    },
+    "services": {
+        "power_manager": true,
+        "thermal_control": true,
+        "network_optimizer": true,
+        "system_monitor": true
+    }
+}
+EOF
+
+# Configure TLP
+cat > /etc/tlp.d/00-tunix.conf << EOF
+# TUNIX TLP Configuration
+TLP_DEFAULT_MODE=AC
+TLP_PERSISTENT_DEFAULT=0
+CPU_SCALING_GOVERNOR_ON_AC=performance
+CPU_SCALING_GOVERNOR_ON_BAT=powersave
+CPU_ENERGY_PERF_POLICY_ON_AC=performance
+CPU_ENERGY_PERF_POLICY_ON_BAT=power
+DISK_IDLE_SECS_ON_AC=0
+DISK_IDLE_SECS_ON_BAT=2
+MAX_LOST_WORK_SECS_ON_AC=15
+MAX_LOST_WORK_SECS_ON_BAT=60
+EOF
+
+# Configure log rotation
+cat > /etc/logrotate.d/tunix << EOF
+/var/log/tunix/*.log {
+    weekly
+    rotate 4
+    compress
+    missingok
+    notifempty
+    create 0640 root root
+}
+EOF
+
+# Generate initial hardware profile
+python3 /usr/local/lib/tunix/hardware_profile.py
+
+# Enable TCP BBR congestion control if available
+if grep -q "bbr" /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null; then
+    echo "bbr" > /proc/sys/net/ipv4/tcp_congestion_control
+fi
+
+# Configure sysctl optimizations
+cat > /etc/sysctl.d/99-tunix-optimizations.conf << EOF
+# Network optimizations
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.ipv4.tcp_rmem = 4096 87380 16777216
+net.ipv4.tcp_wmem = 4096 87380 16777216
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_slow_start_after_idle = 0
+
+# VM optimizations
+vm.dirty_ratio = 20
+vm.dirty_background_ratio = 10
+vm.swappiness = 60
+vm.vfs_cache_pressure = 100
+vm.page_lock_unfairness = 1
+
+# File system optimizations
+fs.inotify.max_user_watches = 524288
+EOF
+
+# Apply sysctl settings
+sysctl --system
+
+# Start and enable services
+systemctl daemon-reload
+
+for service in "${SERVICES[@]}"; do
+    systemctl enable "${service%.*}"
+    systemctl start "${service%.*}"
+done
+
+# Configure powertop auto-tune
+powertop --auto-tune
+
+echo "TUNIX optimization components have been installed and configured."
+echo "System optimization and monitoring services are now running."
+echo "Run 'tunix-monitor' to launch the system monitor interface."
+
+# Initial optimization pass
+python3 /usr/local/lib/tunix/system_coordinator.py --initial-setup

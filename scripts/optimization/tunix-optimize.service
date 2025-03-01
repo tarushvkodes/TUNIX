@@ -1,11 +1,11 @@
 [Unit]
 Description=TUNIX System Optimization Service
-After=network.target systemd-modules-load.service
-Before=display-manager.service
+After=network.target tunix-power.service
+Requires=tunix-power.service tunix-system-control.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/share/tunix/scripts/optimization/optimize-system.sh
+ExecStart=/usr/bin/python3 /usr/local/lib/tunix/hardware-profile.py
 RemainAfterExit=yes
 
 [Install]

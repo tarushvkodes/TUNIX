@@ -1,14 +1,34 @@
 [Unit]
 Description=TUNIX Power Management Service
-After=network.target systemd-modules-load.service
-Wants=tlp.service thermald.service
+After=tunix-coordinator.service
+Requires=tunix-coordinator.service
+Wants=lm-sensors.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /usr/share/tunix/scripts/optimization/power_manager.py
-ExecReload=/usr/bin/python3 /usr/share/tunix/scripts/optimization/power_manager.py
-Restart=on-failure
-RestartSec=30
+ExecStart=/usr/bin/python3 /usr/local/lib/tunix/power_manager.py
+Restart=always
+RestartSec=10
+
+# Required capabilities for hardware access
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_DAC_OVERRIDE CAP_SYS_RAWIO
+AmbientCapabilities=CAP_SYS_ADMIN CAP_DAC_OVERRIDE CAP_SYS_RAWIO
+
+# Hardware access
+DeviceAllow=block-* rw
+DeviceAllow=char-* rw
+
+# Filesystem access
+ReadWritePaths=/sys/class/power_supply /sys/class/backlight /sys/devices/system/cpu /sys/class/drm /sys/bus/usb/devices /proc/sys/vm
+ReadOnlyPaths=/sys /proc
+
+# Security hardening
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+RestrictRealtime=true
+MemoryDenyWriteExecute=true
 
 [Install]
 WantedBy=multi-user.target

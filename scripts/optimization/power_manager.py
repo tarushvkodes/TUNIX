@@ -1,303 +1,372 @@
 #!/usr/bin/python3
-
 import json
-import os
+import logging
 import subprocess
 import time
-from typing import Dict, List, Optional
 from pathlib import Path
+from typing import Dict, List, Optional
+from dataclasses import dataclass
+
+@dataclass
+class PowerProfile:
+    name: str
+    description: str
+    cpu_governor: str
+    cpu_boost: bool
+    gpu_mode: str
+    disk_power_save: bool
+    wifi_power_save: bool
+    screen_brightness: int
+    usb_autosuspend: bool
+    pcie_aspm: str
 
 class PowerManager:
     def __init__(self):
         self.config_dir = Path("/etc/tunix/power")
         self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.profile_file = self.config_dir / "power_profile.json"
-        self.is_laptop = os.path.exists("/sys/class/power_supply/BAT0")
         
-    def configure_power_management(self) -> None:
-        """Configure power management based on system type and hardware"""
-        profile = self._detect_system_profile()
-        self._save_profile(profile)
-        self._apply_profile(profile)
-        self._setup_monitoring()
+        logging.basicConfig(
+            filename="/var/log/tunix/power_manager.log",
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s'
+        )
+        
+        self.profiles = self._load_power_profiles()
+        self.current_profile = None
+        self.on_battery = False
+        self.battery_level = 100
 
-    def _detect_system_profile(self) -> Dict:
-        """Detect system characteristics for power profile"""
-        profile = {
-            "system_type": "laptop" if self.is_laptop else "desktop",
-            "cpu_info": self._get_cpu_info(),
-            "gpu_info": self._get_gpu_info(),
-            "thermal_info": self._get_thermal_info(),
-            "storage_info": self._get_storage_info()
-        }
-        
-        # Determine optimal settings based on hardware
-        profile["settings"] = self._generate_optimal_settings(profile)
-        return profile
-
-    def _get_cpu_info(self) -> Dict:
-        """Get CPU information relevant for power management"""
-        cpu_info = {
-            "governors": self._get_available_governors(),
-            "cores": self._get_core_count(),
-            "frequencies": self._get_frequency_info(),
-            "supports_intel_pstate": os.path.exists("/sys/devices/system/cpu/intel_pstate")
-        }
-        
-        # Check for CPU specific features
-        with open("/proc/cpuinfo", "r") as f:
-            cpuinfo = f.read()
-            cpu_info["vendor"] = "intel" if "Intel" in cpuinfo else "amd" if "AMD" in cpuinfo else "other"
-            
-        return cpu_info
-
-    def _get_gpu_info(self) -> Dict:
-        """Get GPU information for power management"""
-        gpu_info = {
-            "type": "unknown",
-            "has_optimus": False,
-            "supports_power_control": False
-        }
-        
-        # Check for NVIDIA
+    def _load_power_profiles(self) -> Dict[str, PowerProfile]:
+        """Load power profiles from configuration"""
         try:
-            nvidia_smi = subprocess.run(["nvidia-smi", "-L"], capture_output=True, text=True)
-            if nvidia_smi.returncode == 0:
-                gpu_info["type"] = "nvidia"
-                gpu_info["supports_power_control"] = True
-                
-                # Check for Optimus
-                if os.path.exists("/proc/acpi/bbswitch"):
-                    gpu_info["has_optimus"] = True
-        except FileNotFoundError:
-            pass
-        
-        # Check for AMD
-        if os.path.exists("/sys/class/drm/card0/device/power_dpm_state"):
-            gpu_info["type"] = "amd"
-            gpu_info["supports_power_control"] = True
-            
-        return gpu_info
-
-    def _get_thermal_info(self) -> Dict:
-        """Get thermal characteristics of the system"""
-        thermal_info = {
-            "cooling_devices": [],
-            "temp_sensors": [],
-            "critical_temp": None
-        }
-        
-        # Get thermal zones
-        thermal_root = Path("/sys/class/thermal")
-        for zone in thermal_root.glob("thermal_zone*"):
-            try:
-                with open(zone / "type", "r") as f:
-                    zone_type = f.read().strip()
-                with open(zone / "temp", "r") as f:
-                    temp = int(f.read().strip()) / 1000  # Convert to Celsius
-                thermal_info["temp_sensors"].append({
-                    "type": zone_type,
-                    "temp": temp
-                })
-            except (IOError, ValueError):
-                continue
-        
-        # Get cooling devices
-        for cooler in thermal_root.glob("cooling_device*"):
-            try:
-                with open(cooler / "type", "r") as f:
-                    cooler_type = f.read().strip()
-                thermal_info["cooling_devices"].append(cooler_type)
-            except IOError:
-                continue
-                
-        return thermal_info
-
-    def _get_storage_info(self) -> Dict:
-        """Get storage device power management capabilities"""
-        storage_info = {
-            "devices": [],
-            "supports_apm": False,
-            "supports_alpm": False
-        }
-        
-        # Check for AHCI Link Power Management
-        if os.path.exists("/sys/class/scsi_host/host0/link_power_management_policy"):
-            storage_info["supports_alpm"] = True
-            
-        # Check disk types and capabilities
-        for device in Path("/sys/block").glob("sd*"):
-            try:
-                with open(device / "queue/rotational", "r") as f:
-                    is_ssd = f.read().strip() == "0"
-                storage_info["devices"].append({
-                    "name": device.name,
-                    "type": "ssd" if is_ssd else "hdd",
-                    "supports_apm": os.path.exists(device / "device/power/control")
-                })
-            except IOError:
-                continue
-                
-        return storage_info
-
-    def _generate_optimal_settings(self, profile: Dict) -> Dict:
-        """Generate optimal power management settings based on system profile"""
-        settings = {
-            "cpu": self._get_cpu_settings(profile),
-            "gpu": self._get_gpu_settings(profile),
-            "thermal": self._get_thermal_settings(profile),
-            "storage": self._get_storage_settings(profile)
-        }
-        
-        if profile["system_type"] == "laptop":
-            settings.update(self._get_laptop_specific_settings())
-            
-        return settings
-
-    def _get_cpu_settings(self, profile: Dict) -> Dict:
-        """Generate CPU power management settings"""
-        cpu_settings = {
-            "ac_governor": "performance",
-            "bat_governor": "powersave" if self.is_laptop else "performance",
-            "energy_perf_bias": "performance" if not self.is_laptop else "balance-power",
-            "turbo_boost": True if not self.is_laptop else "auto"
-        }
-        
-        if profile["cpu_info"]["supports_intel_pstate"]:
-            cpu_settings.update({
-                "min_perf_pct": 0 if self.is_laptop else 15,
-                "max_perf_pct": 100,
-                "no_turbo": 0 if not self.is_laptop else "auto"
-            })
-            
-        return cpu_settings
-
-    def _get_gpu_settings(self, profile: Dict) -> Dict:
-        """Generate GPU power management settings"""
-        gpu_settings = {
-            "power_control": "auto",
-            "render_mode": "integrated" if self.is_laptop else "performance"
-        }
-        
-        if profile["gpu_info"]["type"] == "nvidia":
-            gpu_settings.update({
-                "nvidia_power_mode": "adaptive" if self.is_laptop else "maximum",
-                "optimus_mode": "on-demand" if profile["gpu_info"]["has_optimus"] else None
-            })
-        elif profile["gpu_info"]["type"] == "amd":
-            gpu_settings.update({
-                "dpm_state": "balanced" if self.is_laptop else "performance",
-                "power_level": "auto" if self.is_laptop else "high"
-            })
-            
-        return gpu_settings
-
-    def _get_thermal_settings(self, profile: Dict) -> Dict:
-        """Generate thermal management settings"""
-        return {
-            "mode": "active" if not self.is_laptop else "adaptive",
-            "cpu_temps": {
-                "critical": 95,
-                "high": 85,
-                "target": 75
-            },
-            "fan_control": "auto",
-            "power_limit": None if not self.is_laptop else "15W"
-        }
-
-    def _get_storage_settings(self, profile: Dict) -> Dict:
-        """Generate storage power management settings"""
-        settings = {
-            "alpm_policy": "max_performance" if not self.is_laptop else "medium_power",
-            "spindown_time": None if not self.is_laptop else 600,
-            "apm_level": 254 if not self.is_laptop else 128
-        }
-        
-        # Adjust for SSDs
-        for device in profile["storage_info"]["devices"]:
-            if device["type"] == "ssd":
-                settings["ssd_power_control"] = {
-                    "runtime_pm": "on" if self.is_laptop else "off",
-                    "autosuspend_delay_ms": 2000 if self.is_laptop else 0
-                }
-                
-        return settings
-
-    def _get_laptop_specific_settings(self) -> Dict:
-        """Generate laptop-specific power settings"""
-        return {
-            "battery": {
-                "charge_threshold_start": 75,
-                "charge_threshold_stop": 80,
-                "discharge_rate_limit": "auto"
-            },
-            "screen": {
-                "brightness_ac": 100,
-                "brightness_bat": 50,
-                "dim_time": 45,
-                "dpms_timeout": 600
-            },
-            "wifi": {
-                "power_save": True,
-                "power_level": "auto"
-            },
-            "usb": {
-                "autosuspend": True,
-                "autosuspend_delay_ms": 2000
+            profiles = {
+                "performance": PowerProfile(
+                    name="performance",
+                    description="Maximum performance mode",
+                    cpu_governor="performance",
+                    cpu_boost=True,
+                    gpu_mode="performance",
+                    disk_power_save=False,
+                    wifi_power_save=False,
+                    screen_brightness=100,
+                    usb_autosuspend=False,
+                    pcie_aspm="performance"
+                ),
+                "balanced": PowerProfile(
+                    name="balanced",
+                    description="Balanced power and performance",
+                    cpu_governor="schedutil",
+                    cpu_boost=True,
+                    gpu_mode="balanced",
+                    disk_power_save=True,
+                    wifi_power_save=True,
+                    screen_brightness=70,
+                    usb_autosuspend=True,
+                    pcie_aspm="default"
+                ),
+                "powersave": PowerProfile(
+                    name="powersave",
+                    description="Maximum power saving",
+                    cpu_governor="powersave",
+                    cpu_boost=False,
+                    gpu_mode="powersave",
+                    disk_power_save=True,
+                    wifi_power_save=True,
+                    screen_brightness=50,
+                    usb_autosuspend=True,
+                    pcie_aspm="powersave"
+                ),
+                "emergency": PowerProfile(
+                    name="emergency",
+                    description="Emergency power saving",
+                    cpu_governor="powersave",
+                    cpu_boost=False,
+                    gpu_mode="powersave",
+                    disk_power_save=True,
+                    wifi_power_save=True,
+                    screen_brightness=30,
+                    usb_autosuspend=True,
+                    pcie_aspm="powersave"
+                )
             }
-        }
+            
+            # Load custom profiles if they exist
+            custom_profiles = self.config_dir / "profiles.json"
+            if custom_profiles.exists():
+                with open(custom_profiles) as f:
+                    custom = json.load(f)
+                    for name, data in custom.items():
+                        profiles[name] = PowerProfile(**data)
+            
+            return profiles
+            
+        except Exception as e:
+            logging.error(f"Error loading power profiles: {e}")
+            return {}
 
-    def _save_profile(self, profile: Dict) -> None:
-        """Save power profile to disk"""
-        with open(self.profile_file, 'w') as f:
-            json.dump(profile, f, indent=2)
+    def run(self):
+        """Main power management loop"""
+        while True:
+            try:
+                self._update_power_state()
+                self._select_appropriate_profile()
+                self._apply_current_profile()
+                time.sleep(5)
+            except Exception as e:
+                logging.error(f"Error in power management loop: {e}")
+                time.sleep(10)
 
-    def _apply_profile(self, profile: Dict) -> None:
-        """Apply power management settings"""
-        settings = profile["settings"]
-        
-        # Apply CPU settings
-        self._apply_cpu_settings(settings["cpu"])
-        
-        # Apply GPU settings
-        self._apply_gpu_settings(settings["gpu"])
-        
-        # Apply storage settings
-        self._apply_storage_settings(settings["storage"])
-        
-        # Apply thermal settings
-        self._apply_thermal_settings(settings["thermal"])
-        
-        # Apply laptop-specific settings if applicable
-        if self.is_laptop and "battery" in settings:
-            self._apply_laptop_settings(settings)
-
-    def _get_available_governors(self) -> List[str]:
-        """Get available CPU governors"""
+    def _update_power_state(self):
+        """Update current power state (AC/battery, battery level)"""
         try:
-            with open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors") as f:
-                return f.read().strip().split()
-        except:
-            return ["performance", "powersave"]
+            # Check AC status
+            ac_online = Path("/sys/class/power_supply/AC/online")
+            if ac_online.exists():
+                with open(ac_online) as f:
+                    self.on_battery = f.read().strip() == "0"
+            
+            # Get battery level
+            battery = Path("/sys/class/power_supply/BAT0/capacity")
+            if battery.exists():
+                with open(battery) as f:
+                    self.battery_level = int(f.read().strip())
+            
+            # Update state file for other services
+            state = {
+                "on_battery": self.on_battery,
+                "battery_level": self.battery_level,
+                "timestamp": time.time()
+            }
+            with open(self.config_dir / "power_state.json", 'w') as f:
+                json.dump(state, f, indent=2)
+                
+        except Exception as e:
+            logging.error(f"Error updating power state: {e}")
 
-    def _get_core_count(self) -> int:
-        """Get number of CPU cores"""
+    def _select_appropriate_profile(self):
+        """Select the most appropriate power profile based on current state"""
         try:
-            return len([f for f in os.listdir("/sys/devices/system/cpu") if f.startswith("cpu") and f[3:].isdigit()])
-        except:
-            return 1
+            if not self.on_battery:
+                # On AC power
+                self.current_profile = self.profiles["balanced"]
+            else:
+                # On battery
+                if self.battery_level <= 10:
+                    self.current_profile = self.profiles["emergency"]
+                elif self.battery_level <= 20:
+                    self.current_profile = self.profiles["powersave"]
+                else:
+                    self.current_profile = self.profiles["balanced"]
+            
+            logging.info(f"Selected power profile: {self.current_profile.name}")
+            
+        except Exception as e:
+            logging.error(f"Error selecting power profile: {e}")
 
-    def _get_frequency_info(self) -> Dict:
-        """Get CPU frequency information"""
+    def _apply_current_profile(self):
+        """Apply the current power profile settings"""
+        if not self.current_profile:
+            return
+            
         try:
-            with open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq") as f:
-                max_freq = int(f.read().strip())
-            with open("/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq") as f:
-                min_freq = int(f.read().strip())
-            return {"min": min_freq, "max": max_freq}
-        except:
-            return {"min": None, "max": None}
+            self._apply_cpu_settings()
+            self._apply_gpu_settings()
+            self._apply_disk_settings()
+            self._apply_wifi_settings()
+            self._apply_screen_settings()
+            self._apply_usb_settings()
+            self._apply_pcie_settings()
+            
+        except Exception as e:
+            logging.error(f"Error applying power profile: {e}")
+
+    def _apply_cpu_settings(self):
+        """Apply CPU power management settings"""
+        try:
+            # Set CPU governor
+            for cpu in Path("/sys/devices/system/cpu").glob("cpu[0-9]*"):
+                governor_file = cpu / "cpufreq/scaling_governor"
+                if governor_file.exists():
+                    with open(governor_file, 'w') as f:
+                        f.write(self.current_profile.cpu_governor)
+            
+            # Set CPU boost
+            boost_file = Path("/sys/devices/system/cpu/cpufreq/boost")
+            if boost_file.exists():
+                with open(boost_file, 'w') as f:
+                    f.write("1" if self.current_profile.cpu_boost else "0")
+            
+            # Set energy performance preference
+            for cpu in Path("/sys/devices/system/cpu").glob("cpu[0-9]*"):
+                epp_file = cpu / "cpufreq/energy_performance_preference"
+                if epp_file.exists():
+                    with open(epp_file, 'w') as f:
+                        if self.current_profile.name == "performance":
+                            f.write("performance")
+                        elif self.current_profile.name == "powersave":
+                            f.write("power")
+                        else:
+                            f.write("balance_performance")
+                            
+        except Exception as e:
+            logging.error(f"Error applying CPU settings: {e}")
+
+    def _apply_gpu_settings(self):
+        """Apply GPU power management settings"""
+        try:
+            # NVIDIA GPU
+            try:
+                subprocess.run([
+                    "nvidia-settings",
+                    "-a", f"[gpu:0]/GpuPowerMizerMode={self._get_nvidia_power_mode()}"
+                ])
+            except Exception:
+                pass
+            
+            # AMD GPU
+            try:
+                for card in Path("/sys/class/drm").glob("card[0-9]"):
+                    power_method = card / "device/power_method"
+                    power_profile = card / "device/power_profile"
+                    
+                    if power_method.exists() and power_profile.exists():
+                        with open(power_method, 'w') as f:
+                            f.write("profile")
+                        with open(power_profile, 'w') as f:
+                            f.write(self._get_amd_power_profile())
+            except Exception:
+                pass
+            
+            # Intel GPU
+            try:
+                for gpu in Path("/sys/class/powercap/intel-rapl").glob("intel-rapl:*"):
+                    constraint = gpu / "constraint_0_power_limit_uw"
+                    if constraint.exists():
+                        with open(constraint, 'w') as f:
+                            limit = self._get_intel_power_limit()
+                            f.write(str(limit))
+            except Exception:
+                pass
+                
+        except Exception as e:
+            logging.error(f"Error applying GPU settings: {e}")
+
+    def _apply_disk_settings(self):
+        """Apply disk power management settings"""
+        try:
+            if self.current_profile.disk_power_save:
+                # Enable aggressive power saving
+                subprocess.run([
+                    "hdparm", "-B", "128",
+                    *Path("/dev").glob("sd[a-z]")
+                ])
+                
+                # Set SATA power management
+                for port in Path("/sys/class/scsi_host").glob("host*"):
+                    link_pm = port / "link_power_management_policy"
+                    if link_pm.exists():
+                        with open(link_pm, 'w') as f:
+                            f.write("min_power")
+            else:
+                # Disable power saving for performance
+                subprocess.run([
+                    "hdparm", "-B", "254",
+                    *Path("/dev").glob("sd[a-z]")
+                ])
+                
+                # Set SATA performance mode
+                for port in Path("/sys/class/scsi_host").glob("host*"):
+                    link_pm = port / "link_power_management_policy"
+                    if link_pm.exists():
+                        with open(link_pm, 'w') as f:
+                            f.write("max_performance")
+                            
+        except Exception as e:
+            logging.error(f"Error applying disk settings: {e}")
+
+    def _apply_wifi_settings(self):
+        """Apply WiFi power management settings"""
+        try:
+            power_save = "on" if self.current_profile.wifi_power_save else "off"
+            
+            for device in subprocess.check_output(["iwconfig"]).decode().split("\n"):
+                if "IEEE" in device:
+                    interface = device.split()[0]
+                    subprocess.run([
+                        "iwconfig", interface,
+                        "power", power_save
+                    ])
+                    
+        except Exception as e:
+            logging.error(f"Error applying WiFi settings: {e}")
+
+    def _apply_screen_settings(self):
+        """Apply screen brightness settings"""
+        try:
+            # Set brightness for all displays
+            for backlight in Path("/sys/class/backlight").glob("*"):
+                max_brightness = int((backlight / "max_brightness").read_text())
+                target_brightness = int(
+                    (self.current_profile.screen_brightness / 100) * max_brightness
+                )
+                
+                with open(backlight / "brightness", 'w') as f:
+                    f.write(str(target_brightness))
+                    
+        except Exception as e:
+            logging.error(f"Error applying screen settings: {e}")
+
+    def _apply_usb_settings(self):
+        """Apply USB power management settings"""
+        try:
+            for device in Path("/sys/bus/usb/devices").glob("*"):
+                power_control = device / "power/control"
+                if power_control.exists():
+                    with open(power_control, 'w') as f:
+                        if self.current_profile.usb_autosuspend:
+                            f.write("auto")
+                        else:
+                            f.write("on")
+                            
+        except Exception as e:
+            logging.error(f"Error applying USB settings: {e}")
+
+    def _apply_pcie_settings(self):
+        """Apply PCIe ASPM settings"""
+        try:
+            with open("/sys/module/pcie_aspm/parameters/policy", 'w') as f:
+                f.write(self.current_profile.pcie_aspm)
+                
+        except Exception as e:
+            logging.error(f"Error applying PCIe settings: {e}")
+
+    def _get_nvidia_power_mode(self) -> int:
+        """Get NVIDIA GPU power mode based on current profile"""
+        if self.current_profile.name == "performance":
+            return 1  # Prefer maximum performance
+        elif self.current_profile.name == "powersave":
+            return 0  # Prefer minimum power
+        else:
+            return 2  # Auto
+
+    def _get_amd_power_profile(self) -> str:
+        """Get AMD GPU power profile based on current profile"""
+        if self.current_profile.name == "performance":
+            return "high"
+        elif self.current_profile.name == "powersave":
+            return "low"
+        else:
+            return "auto"
+
+    def _get_intel_power_limit(self) -> int:
+        """Get Intel GPU power limit based on current profile"""
+        if self.current_profile.name == "performance":
+            return 15000000  # 15W
+        elif self.current_profile.name == "powersave":
+            return 5000000   # 5W
+        else:
+            return 10000000  # 10W
 
 if __name__ == "__main__":
     manager = PowerManager()
-    manager.configure_power_management()
+    manager.run()

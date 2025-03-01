@@ -1,0 +1,24 @@
+[Unit]
+Description=TUNIX Thermal Control Service
+After=tunix-coordinator.service
+Wants=lm-sensors.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/tunix/thermal_control.py
+Restart=always
+RestartSec=10
+
+# Give enough privileges for hardware access
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_DAC_OVERRIDE
+AmbientCapabilities=CAP_SYS_ADMIN CAP_DAC_OVERRIDE
+
+# Hardening
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+RestrictRealtime=true
+
+[Install]
+WantedBy=multi-user.target
