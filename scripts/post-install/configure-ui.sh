@@ -301,6 +301,78 @@ configure_app_theming() {
     success "Cross-platform theming configured"
 }
 
+# Configure multimedia
+configure_multimedia() {
+    log_message "Configuring multimedia support"
+    python3 /usr/share/tunix/scripts/post-install/configure-multimedia.py
+}
+
+# Configure default applications
+configure_default_apps() {
+    log_message "Setting up default applications"
+    update-alternatives --set x-www-browser /usr/bin/firefox
+    update-alternatives --set gnome-www-browser /usr/bin/firefox
+    xdg-mime default org.gnome.Nautilus.desktop inode/directory
+    xdg-mime default firefox.desktop x-scheme-handler/http
+    xdg-mime default firefox.desktop x-scheme-handler/https
+}
+
+# Configure system shortcuts
+configure_shortcuts() {
+    log_message "Setting up keyboard shortcuts"
+    gsettings set org.gnome.settings-daemon.plugins.media-keys terminal "['<Super>t']"
+    gsettings set org.gnome.settings-daemon.plugins.media-keys www "['<Super>b']"
+    gsettings set org.gnome.settings-daemon.plugins.media-keys home "['<Super>e']"
+}
+
+# Configure power management
+configure_power_management() {
+    log_message "Configuring power management"
+    if [ -d "/sys/class/power_supply/BAT0" ]; then
+        # Laptop-specific settings
+        gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 1800
+        gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 900
+        gsettings set org.gnome.settings-daemon.plugins.power power-button-action 'suspend'
+    else
+        # Desktop-specific settings
+        gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 3600
+        gsettings set org.gnome.settings-daemon.plugins.power power-button-action 'interactive'
+    fi
+}
+
+# Configure system sounds
+configure_system_sounds() {
+    log_message "Setting up system sounds"
+    gsettings set org.gnome.desktop.sound event-sounds true
+    gsettings set org.gnome.desktop.sound input-feedback-sounds true
+}
+
+# Set up system-wide environment variables
+configure_env_variables() {
+    log_message "Configuring environment variables"
+    cat > /etc/profile.d/tunix-env.sh << 'EOL'
+# TUNIX environment configuration
+export QT_QPA_PLATFORMTHEME=gtk3
+export DESKTOP_SESSION=gnome
+export XDG_CURRENT_DESKTOP=GNOME
+export GTK_USE_PORTAL=1
+EOL
+}
+
+# Configure app defaults
+setup_app_defaults() {
+    log_message "Setting up application defaults"
+    mkdir -p /etc/skel/.config
+    cp -r /etc/tunix/app-defaults/* /etc/skel/.config/
+}
+
+# Apply system optimizations
+apply_system_optimizations() {
+    log_message "Applying system optimizations"
+    systemctl enable tunix-optimize.service
+    systemctl start tunix-optimize.service
+}
+
 # Main function
 main() {
     log "Starting TUNIX UI configuration..."
@@ -317,6 +389,14 @@ main() {
     configure_system
     install_wallpapers
     configure_app_theming
+    configure_multimedia
+    configure_default_apps
+    configure_shortcuts
+    configure_power_management
+    configure_system_sounds
+    configure_env_variables
+    setup_app_defaults
+    apply_system_optimizations
     
     # Update dconf database
     dconf update

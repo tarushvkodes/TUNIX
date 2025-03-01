@@ -1,26 +1,38 @@
 {
     "nvidia": {
         "nvidia-driver-525": [
-            "10DE:2484", "10DE:25A0", "10DE:2204", "10DE:1F95",
-            "10DE:1E04", "10DE:1F02", "10DE:1B81", "10DE:1C03"
+            "10DE:2684", "10DE:25A0", "10DE:2204", "10DE:1F95",
+            "10DE:1E04", "10DE:1F02", "10DE:1E82", "10DE:1EB8"
         ],
         "nvidia-driver-470": [
-            "10DE:1B80", "10DE:1BE0", "10DE:1C82", "10DE:1C81",
-            "10DE:1C03", "10DE:1B81", "10DE:1B84", "10DE:1B06"
+            "10DE:1B80", "10DE:1BA1", "10DE:1C03", "10DE:1C82",
+            "10DE:1D01", "10DE:1D10", "10DE:1D12", "10DE:1D81"
         ],
         "nvidia-driver-390": [
-            "10DE:0A20", "10DE:0A23", "10DE:0A28", "10DE:0A29",
-            "10DE:0A2B", "10DE:0A34", "10DE:0A60", "10DE:0A65"
+            "10DE:0DD8", "10DE:0DCD", "10DE:0DCB", "10DE:0DC4",
+            "10DE:0DC0", "10DE:0DBE", "10DE:0DBC", "10DE:0DB1"
+        ]
+    },
+    "amd": {
+        "amdgpu": [
+            "1002:73DF", "1002:73BF", "1002:7373", "1002:731F",
+            "1002:7340", "1002:7341", "1002:7347", "1002:715F"
+        ],
+        "radeon": [
+            "1002:6779", "1002:6758", "1002:6759", "1002:675F",
+            "1002:6740", "1002:6741", "1002:6738", "1002:6739"
         ]
     },
     "wifi": {
-        "firmware-iwlwifi": [
-            "8086:24FD", "8086:2526", "8086:25C6", "8086:27DC",
-            "8086:3166", "8086:3165", "8086:3166", "8086:24F3"
+        "iwlwifi": [
+            "8086:24FD", "8086:2526", "8086:2723", "8086:2725",
+            "8086:27DC", "8086:3165", "8086:3166", "8086:24F3"
         ],
-        "firmware-realtek": [
-            "10EC:8168", "10EC:8169", "10EC:8171", "10EC:8172",
-            "10EC:8173", "10EC:8174", "10EC:8176", "10EC:8178"
+        "rtl8821ce": [
+            "10EC:C821", "10EC:C820", "10EC:8821"
+        ],
+        "rtl8822be": [
+            "10EC:B822", "10EC:B823"
         ]
     },
     "printers": {
@@ -44,5 +56,84 @@
         "disk_space": "50GB",
         "cpu": "4 cores",
         "gpu_memory": "1GB"
+    },
+    "performance_profiles": {
+        "laptop-performance": {
+            "min_cpu_cores": 4,
+            "min_memory_gb": 8,
+            "recommended_gpu": ["nvidia-dedicated", "amd-dedicated"],
+            "power_management": {
+                "cpu_governor": "performance",
+                "gpu_power": "performance",
+                "battery_threshold": 20
+            }
+        },
+        "laptop-balanced": {
+            "min_cpu_cores": 2,
+            "min_memory_gb": 4,
+            "power_management": {
+                "cpu_governor": "schedutil",
+                "gpu_power": "balanced",
+                "battery_threshold": 15
+            }
+        },
+        "laptop-powersave": {
+            "min_cpu_cores": 1,
+            "min_memory_gb": 2,
+            "power_management": {
+                "cpu_governor": "powersave",
+                "gpu_power": "battery",
+                "battery_threshold": 10
+            }
+        },
+        "desktop-performance": {
+            "min_cpu_cores": 4,
+            "min_memory_gb": 8,
+            "recommended_gpu": ["nvidia-dedicated", "amd-dedicated"],
+            "power_management": {
+                "cpu_governor": "performance",
+                "gpu_power": "performance"
+            }
+        },
+        "desktop-balanced": {
+            "min_cpu_cores": 2,
+            "min_memory_gb": 4,
+            "power_management": {
+                "cpu_governor": "schedutil",
+                "gpu_power": "balanced"
+            }
+        }
+    },
+    "optimizations": {
+        "low_memory": {
+            "threshold_gb": 4,
+            "recommendations": {
+                "vm.swappiness": 60,
+                "vm.vfs_cache_pressure": 50,
+                "zram": true
+            }
+        },
+        "high_memory": {
+            "threshold_gb": 16,
+            "recommendations": {
+                "vm.swappiness": 10,
+                "vm.vfs_cache_pressure": 100,
+                "zram": false
+            }
+        },
+        "ssd": {
+            "recommendations": {
+                "vm.swappiness": 1,
+                "vm.vfs_cache_pressure": 50,
+                "fstrim.timer": true
+            }
+        },
+        "hdd": {
+            "recommendations": {
+                "vm.swappiness": 60,
+                "vm.vfs_cache_pressure": 100,
+                "readahead": 2048
+            }
+        }
     }
 }

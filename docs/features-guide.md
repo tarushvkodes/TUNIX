@@ -69,6 +69,39 @@
 - Screen recording tools
 - Screenshot utilities
 
+## Multimedia Support
+
+### Video Playback
+- Hardware-accelerated video decoding using VA-API and VDPAU
+- Support for all common video formats (H.264, H.265/HEVC, VP8, VP9, AV1)
+- Automatic codec installation for new formats
+- Pre-configured video players (VLC, MPV) with optimal settings
+
+### Audio System
+- Modern PipeWire audio system with PulseAudio compatibility
+- Advanced audio routing and device management
+- Professional-grade audio processing with low latency
+- Support for USB, Bluetooth, and HDMI audio devices
+
+### Image Support
+- Enhanced image format support (JPEG, PNG, WebP, HEIF)
+- Hardware-accelerated image processing
+- Automatic thumbnail generation
+- Color management support
+
+### Media Applications
+- VLC media player with hardware acceleration
+- MPV player for high-quality video playback
+- GIMP for image editing
+- Audacity for audio editing
+- OBS Studio for screen recording and streaming
+
+### Codec Management
+- Automatic codec detection and installation
+- Support for restricted formats out of the box
+- Optimized multimedia performance
+- Easy troubleshooting with diagnostic tools
+
 ## System Management
 
 ### Package Management

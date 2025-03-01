@@ -31,6 +31,11 @@ run_system_tests() {
     timeout $TEST_TIMEOUT python3 test_system.py --verbose 2>&1 | tee -a "$LOG_FILE"
 }
 
+run_multimedia_tests() {
+    log_message "Running multimedia subsystem tests..."
+    python3 /usr/share/tunix/scripts/test/test_multimedia.py | tee -a "$LOG_FILE"
+}
+
 check_desktop_environment() {
     log_message "Checking desktop environment..."
     
@@ -108,6 +113,7 @@ main() {
     check_desktop_environment
     check_hardware_support
     run_system_tests
+    run_multimedia_tests
     
     # Generate and clean up reports
     generate_report

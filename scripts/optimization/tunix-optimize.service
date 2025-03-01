@@ -1,0 +1,12 @@
+[Unit]
+Description=TUNIX System Optimization Service
+After=network.target systemd-modules-load.service
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/share/tunix/scripts/optimization/optimize-system.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

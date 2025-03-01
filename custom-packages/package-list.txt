@@ -44,6 +44,29 @@ gstreamer1.0-plugins-ugly
 gstreamer1.0-plugins-good
 gstreamer1.0-libav
 ubuntu-restricted-extras
+x264
+x265
+libvpx7
+libva-intel-driver
+libva-utils
+vdpau-driver-all
+pulseaudio
+pipewire
+pipewire-pulse
+pipewire-alsa
+pipewire-jack
+alsa-utils
+lsp-plugins
+webp
+libjpeg-turbo8
+libpng16-16
+librsvg2-common
+gstreamer1.0-plugins-base
+gstreamer1.0-vaapi
+mpv
+audacity
+obs-studio
+imagemagick
 
 # Productivity
 libreoffice

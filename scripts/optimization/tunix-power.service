@@ -1,0 +1,14 @@
+[Unit]
+Description=TUNIX Power Management Service
+After=network.target systemd-modules-load.service
+Wants=tlp.service thermald.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/share/tunix/scripts/optimization/power_manager.py
+ExecReload=/usr/bin/python3 /usr/share/tunix/scripts/optimization/power_manager.py
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

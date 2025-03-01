@@ -28,7 +28,7 @@ check_requirements() {
     }
     
     # Check required packages
-    REQUIRED_PKGS="debootstrap squashfs-tools xorriso isolinux"
+    REQUIRED_PKGS="debootstrap squashfs-tools xorriso isolinux python3 python3-pip python3-gi python3-gi-cairo gir1.2-gtk-3.0"
     for pkg in $REQUIRED_PKGS; do
         if ! dpkg -l | grep -q "^ii  $pkg "; then
             apt-get install -y "$pkg"
@@ -53,6 +53,27 @@ prepare_workspace() {
     unsquashfs -d "$CHROOT_DIR" "$ISO_DIR/casper/filesystem.squashfs"
 }
 
+setup_hardware_support() {
+    log_message "Setting up hardware support system..."
+    
+    # Create necessary directories
+    mkdir -p "$CHROOT_DIR/etc/tunix/config.d"
+    mkdir -p "$CHROOT_DIR/usr/share/tunix/installer"
+    
+    # Copy hardware detection and profiling modules
+    cp installer/modules/hardware_detection.py "$CHROOT_DIR/usr/share/tunix/installer/"
+    cp scripts/optimization/hardware-profile.py "$CHROOT_DIR/usr/share/tunix/installer/"
+    cp installer/data/hardware_compatibility.json "$CHROOT_DIR/usr/share/tunix/installer/"
+    
+    # Make scripts executable
+    chmod +x "$CHROOT_DIR/usr/share/tunix/installer/hardware-profile.py"
+    
+    # Install required Python packages in chroot
+    chroot "$CHROOT_DIR" /bin/bash -c "
+        pip3 install typing-extensions
+    "
+}
+
 customize_system() {
     log_message "Customizing system..."
     
@@ -71,6 +92,9 @@ customize_system() {
         apt-get update
         apt-get upgrade -y
         
+        # Install base hardware support packages
+        apt-get install -y tlp thermald powertop cpupower-gui gamemode
+        
         # Install TUNIX packages
         bash /usr/local/share/tunix/custom-packages/install-packages.sh
         
@@ -80,8 +104,23 @@ customize_system() {
         # Install Plymouth theme
         bash /usr/local/share/tunix/branding/plymouth/install-plymouth-theme.sh
         
-        # Optimize system
-        bash /usr/local/share/tunix/scripts/post-install/optimize-system.sh
+        # Set up hardware profiling service
+        cat > /etc/systemd/system/tunix-hardware-profile.service << 'EOL'
+[Unit]
+Description=TUNIX Hardware Profile Service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/share/tunix/installer/hardware-profile.py
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOL
+        
+        # Enable hardware profiling service
+        systemctl enable tunix-hardware-profile.service
         
         # Clean up
         apt-get autoremove -y
@@ -137,6 +176,7 @@ main() {
     
     check_requirements
     prepare_workspace
+    setup_hardware_support
     customize_system
     create_iso
     cleanup
