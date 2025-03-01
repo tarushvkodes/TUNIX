@@ -1,0 +1,130 @@
+/* TUNIX-Light Button Styles
+ * Copyright © Tarushv Kosgi 2025
+ */
+
+button {
+    min-height: 36px;
+    min-width: 80px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: normal;
+    background-color: @button_bg;
+    color: @on_background;
+    border: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    transition-property: background-color, box-shadow, transform;
+    transition-duration: 200ms;
+}
+
+button:hover {
+    background-color: @button_hover;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+button:active {
+    background-color: @button_active;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+    transform: translateY(1px);
+    transition-duration: 50ms;
+}
+
+button:disabled {
+    background-color: alpha(@button_bg, 0.7);
+    color: @text_disabled;
+    box-shadow: none;
+}
+
+button:checked {
+    background-color: alpha(@accent, 0.2);
+    color: @accent;
+}
+
+/* Primary button */
+button.suggested-action {
+    background-color: @accent;
+    color: @on_primary;
+}
+
+button.suggested-action:hover {
+    background-color: lighter(@accent);
+}
+
+button.suggested-action:active {
+    background-color: darker(@accent);
+}
+
+button.suggested-action:disabled {
+    background-color: alpha(@accent, 0.6);
+    color: alpha(@on_primary, 0.7);
+}
+
+/* Destructive button */
+button.destructive-action {
+    background-color: @error;
+    color: @on_primary;
+}
+
+button.destructive-action:hover {
+    background-color: lighter(@error);
+}
+
+button.destructive-action:active {
+    background-color: darker(@error);
+}
+
+button.destructive-action:disabled {
+    background-color: alpha(@error, 0.6);
+    color: alpha(@on_primary, 0.7);
+}
+
+/* Text button */
+button.flat {
+    background-color: transparent;
+    box-shadow: none;
+    color: @accent;
+}
+
+button.flat:hover {
+    background-color: alpha(@accent, 0.1);
+    box-shadow: none;
+}
+
+button.flat:active {
+    background-color: alpha(@accent, 0.2);
+    box-shadow: none;
+}
+
+button.flat:disabled {
+    color: @text_disabled;
+    background-color: transparent;
+}
+
+/* Circular button */
+button.circular {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 8px;
+    border-radius: 50%;
+}
+
+/* Icon button */
+button.image-button {
+    min-width: 36px;
+    padding: 8px;
+}
+
+/* Small button */
+button.small {
+    min-height: 28px;
+    min-width: 60px;
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+/* Large button */
+button.large {
+    min-height: 48px;
+    min-width: 100px;
+    padding: 12px 24px;
+    font-size: 16px;
+}

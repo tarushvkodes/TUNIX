@@ -1,0 +1,82 @@
+# TUNIX Default Package List
+# Copyright © Tarushv Kosgi 2025
+
+# User Interface Enhancements
+gnome-tweaks
+dconf-editor
+papirus-icon-theme
+materia-gtk-theme
+fonts-noto
+fonts-noto-color-emoji
+fonts-firacode
+gnome-shell-extensions
+gnome-shell-extension-dash-to-dock
+
+# Hardware Support
+firmware-linux-nonfree
+linux-firmware
+intel-microcode
+amd64-microcode
+nvidia-driver-525
+tlp
+tlp-rdw
+powertop
+blueman
+printer-driver-all
+system76-driver
+
+# System Management
+synaptic
+aptitude
+gdebi
+neofetch
+htop
+timeshift
+gnome-software
+gnome-software-plugin-flatpak
+flatpak
+
+# Media Support
+vlc
+ffmpeg
+gstreamer1.0-plugins-bad
+gstreamer1.0-plugins-ugly
+gstreamer1.0-plugins-good
+gstreamer1.0-libav
+ubuntu-restricted-extras
+
+# Productivity
+libreoffice
+gimp
+inkscape
+firefox
+thunderbird
+evolution
+
+# Development Tools
+git
+build-essential
+python3
+python3-pip
+visual-studio-code
+docker.io
+
+# System Utilities
+gparted
+baobab
+gnome-disk-utility
+net-tools
+openssh-server
+gufw
+
+# Power Management
+tlp
+tlp-rdw
+powertop
+
+# Backup & Recovery
+timeshift
+deja-dup
+
+# TUNIX Custom Packages
+# Will be added as they are developed

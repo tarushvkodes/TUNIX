@@ -1,0 +1,75 @@
+/* TUNIX-Light GTK4 Theme
+ * Copyright © Tarushv Kosgi 2025
+ */
+
+/* Import color definitions */
+@import url("colors.css");
+
+/* Import widget styling */
+@import url("widgets/buttons.css");
+@import url("widgets/entries.css");
+@import url("widgets/headerbar.css");
+@import url("widgets/notifications.css");
+@import url("widgets/panels.css");
+@import url("widgets/popover.css");
+@import url("widgets/switches.css");
+
+/* Base styling */
+* {
+    -gtk-icon-style: regular;
+    -gtk-icon-palette: normal;
+    font-family: "Noto Sans", sans-serif;
+    -gtk-dpi: 96;
+}
+
+window {
+    background-color: @background;
+    color: @on_background;
+}
+
+.default-decoration {
+    padding: 4px;
+    min-height: 0;
+}
+
+dialog {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Typography */
+label {
+    font-size: 14px;
+}
+
+.title-1 {
+    font-weight: bold;
+    font-size: 24px;
+}
+
+.title-2 {
+    font-weight: bold;
+    font-size: 20px;
+}
+
+.title-3 {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.caption {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* Global Animations */
+@keyframes button_pressed {
+    from { background-color: alpha(@accent_bg_color, 0.5); }
+    to { background-color: alpha(@accent_bg_color, 0.3); }
+}
+
+/* Transitions */
+* {
+    transition-property: background-color, color, border-color, box-shadow;
+    transition-duration: 200ms;
+}

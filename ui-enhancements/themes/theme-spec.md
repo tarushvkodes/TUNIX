@@ -1,39 +1,73 @@
-# TUNIX Theme System
+# TUNIX Theming System
 
-## Design Principles
-- **Visual Hierarchy**: Clear distinction between interactive and static elements
-- **Color Theory**: Scientifically-backed color palette for readability and reduced eye strain
-- **Accessibility First**: High contrast options and screen reader compatibility
-- **Consistency**: Uniform design language across all applications
+## Design Philosophy
+The TUNIX theming system aims to create a visually consistent, modern, and accessible interface across all applications. It draws inspiration from contemporary design principles while maintaining a unique identity.
 
-## Theme Components
+## Color Palette
+### Primary Colors
+- **Accent Blue**: #3584e4 - Used for primary buttons, selected items, and interactive elements
+- **Background**: #ffffff (Light) / #242424 (Dark) - Main application backgrounds
+- **Surface**: #fafafa (Light) / #303030 (Dark) - Cards, dialogs, and elevated surfaces
+- **On Primary**: #ffffff - Text on primary colored elements
+- **On Background**: #202020 (Light) / #eeeeee (Dark) - Main text color
 
-### Color Scheme
-- **Primary Colors**: A carefully selected palette that balances aesthetics and usability
-- **Accent Colors**: User-configurable accent colors that apply system-wide
-- **Dark/Light Modes**: Fully implemented dark and light themes with automatic switching
-- **High Contrast**: Accessibility themes for vision-impaired users
+### Secondary Colors
+- **Success Green**: #26a269 - Success indicators and actions
+- **Warning Yellow**: #e5a50a - Warnings and alerts
+- **Error Red**: #e01b24 - Error messages and destructive actions
+- **Purple**: #9141ac - Alternative accent for variety
+- **Teal**: #1a7e76 - Alternative accent for variety
 
-### Typography
-- **Font Selection**: Optimized fonts for screen readability
-- **Font Rendering**: Enhanced subpixel rendering and hinting
-- **Consistent Sizing**: Standardized font sizes across the system
-- **Variable DPI Support**: Proper scaling for different display resolutions
+## Typography
+- **Primary Font**: Noto Sans - Used for all UI elements
+- **Monospace Font**: Fira Code - Used for terminal and code
+- **Font Sizes**:
+  - Header 1: 24px
+  - Header 2: 20px
+  - Header 3: 16px
+  - Body: 14px
+  - Caption: 12px
+- **Font Rendering**: Enhanced rendering settings with proper hinting and anti-aliasing
 
-### Interface Elements
-- **Buttons & Controls**: Redesigned interactive elements with clear states
-- **Window Decorations**: Modern, clean window frames and controls
-- **Dialog Boxes**: Simplified, intuitive dialog layouts
-- **Menus**: Enhanced dropdown and context menus
+## Interface Elements
+### Buttons
+- Slightly rounded corners (8px radius)
+- Subtle hover and press animations
+- Clear visual hierarchy between primary, secondary, and text buttons
+
+### Input Fields
+- Consistent styling across applications
+- Clear focus states with accent color
+- Subtle animations for feedback
+
+### Windows and Dialogs
+- Consistent padding (16px)
+- Subtle drop shadows for elevation
+- Smooth opening and closing animations
 
 ### Icons
-- **Icon Set**: Comprehensive icon set with consistent style
-- **Scalable Graphics**: SVG-based icons for crisp rendering at any size
-- **Visual Metaphors**: Intuitive, universally understood icon designs
-- **Contextual Variants**: Icons that adapt to light/dark themes
+- Unified icon set based on Papirus with TUNIX modifications
+- Consistent sizing and padding
+- SVG format for sharp rendering at all sizes
 
-## Technical Implementation
-- GTK4 theme engine with custom CSS
-- SVG icon toolkit
-- Runtime theme switching without restart
-- Theme extension API for third-party applications
+## Dark Mode
+- Full dark mode support across all applications
+- Automatic switching based on time or manual toggle
+- Careful attention to contrast and readability
+
+## Accessibility
+- Meets WCAG 2.1 AA standards for contrast
+- Support for high-contrast mode
+- Scalable interface elements for different DPIs
+
+## Implementation
+- GTK4 theme with custom CSS
+- Integration with Qt applications via Qt style bridge
+- Custom icon theme based on Papirus
+- dconf settings for consistent application appearance
+
+## Application Compatibility
+- Native GTK applications receive full theming
+- Electron apps with themed title bars
+- Firefox custom theme integration
+- LibreOffice theme compatibility
