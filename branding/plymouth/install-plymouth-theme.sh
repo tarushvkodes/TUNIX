@@ -1,9 +1,11 @@
 #!/bin/bash
-# TUNIX Plymouth Theme Installation Script
+# TUNIX Plymouth Theme Installer
 # Copyright © Tarushv Kosgi 2025
 
-# Set script to exit on error
 set -e
+
+THEME_NAME="tunix"
+THEME_DIR="/usr/share/plymouth/themes/$THEME_NAME"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -25,30 +27,39 @@ success() {
 }
 
 # Check if running as root
-if [ "$(id -u)" -ne 0 ]; then
-    error "This script must be run as root"
+if [ "$EUID" -ne 0 ]; then
+    error "Please run as root"
 fi
 
 log "Installing TUNIX Plymouth theme..."
 
 # Create theme directory
-THEME_DIR="/usr/share/plymouth/themes/tunix"
 mkdir -p "$THEME_DIR"
 
 # Copy theme files
 log "Copying theme files..."
 cp tunix.plymouth "$THEME_DIR/"
 cp tunix.script "$THEME_DIR/"
-cp logo.png "$THEME_DIR/"
-cp progress_bar.png "$THEME_DIR/"
-cp progress_box.png "$THEME_DIR/"
-cp dialog.png "$THEME_DIR/"
-cp bullet.png "$THEME_DIR/"
+cp ../tunixlogo.PNG "$THEME_DIR/tunixlogo.png"
+
+# Create progress bar images
+log "Creating progress bar images..."
+convert -size 200x10 xc:transparent \
+    -fill "#3584e4" -draw "roundrectangle 0,0,200,10,5,5" \
+    "$THEME_DIR/progress_bar.png"
+
+convert -size 202x12 xc:transparent \
+    -fill none -stroke "#ffffff" -strokewidth 1 \
+    -draw "roundrectangle 0,0,201,11,5,5" \
+    "$THEME_DIR/progress_box.png"
 
 # Install the theme
 log "Setting up theme in system..."
-update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth "$THEME_DIR/tunix.plymouth" 100
-update-alternatives --set default.plymouth "$THEME_DIR/tunix.plymouth"
+update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth \
+    "$THEME_DIR/tunix.plymouth" 100
+
+# Set as default theme
+plymouth-set-default-theme tunix
 
 # Update initramfs
 log "Updating initramfs..."

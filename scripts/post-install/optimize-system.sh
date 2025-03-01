@@ -5,6 +5,11 @@
 # Set script to exit on error
 set -e
 
+LOG_FILE="/var/log/tunix-optimization.log"
+log_message() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
 # Colors for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'

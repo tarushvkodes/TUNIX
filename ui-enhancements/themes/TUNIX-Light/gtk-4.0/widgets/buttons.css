@@ -1,101 +1,96 @@
-/* TUNIX-Light Button Styles
- * Copyright © Tarushv Kosgi 2025
- */
+/* Button Styles for TUNIX Light Theme
+ * Copyright © Tarushv Kosgi 2025 */
 
 button {
     min-height: 36px;
-    min-width: 80px;
-    padding: 8px 16px;
+    padding: 0 16px;
     border-radius: 8px;
-    font-weight: normal;
-    background-color: @button_bg;
-    color: @on_background;
-    border: none;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-    transition-property: background-color, box-shadow, transform;
-    transition-duration: 200ms;
+    font-weight: 500;
+    transition: all 200ms ease;
 }
 
 button:hover {
-    background-color: @button_hover;
+    background-color: var(--button-hover-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
 }
 
 button:active {
-    background-color: @button_active;
+    background-color: var(--button-active-color);
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
     transform: translateY(1px);
     transition-duration: 50ms;
 }
 
 button:disabled {
-    background-color: alpha(@button_bg, 0.7);
-    color: @text_disabled;
-    box-shadow: none;
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 button:checked {
-    background-color: alpha(@accent, 0.2);
-    color: @accent;
+    background-color: color-mix(in srgb, var(--accent-color) 20%, transparent);
+    color: var(--accent-color);
 }
 
-/* Primary button */
+/* Primary Button */
 button.suggested-action {
-    background-color: @accent;
-    color: @on_primary;
+    background-color: var(--accent-color);
+    color: var(--accent-fg-color);
+    border: none;
 }
 
 button.suggested-action:hover {
-    background-color: lighter(@accent);
+    background-color: color-mix(in srgb, var(--accent-color) 85%, transparent);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 button.suggested-action:active {
-    background-color: darker(@accent);
+    background-color: color-mix(in srgb, var(--accent-color) 70%, transparent);
+    transform: translateY(1px);
 }
 
 button.suggested-action:disabled {
-    background-color: alpha(@accent, 0.6);
-    color: alpha(@on_primary, 0.7);
+    background-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
+    color: color-mix(in srgb, var(--on-primary) 70%, transparent);
 }
 
-/* Destructive button */
+/* Destructive Button */
 button.destructive-action {
-    background-color: @error;
-    color: @on_primary;
+    background-color: var(--error-color);
+    color: var(--accent-fg-color);
+    border: none;
 }
 
 button.destructive-action:hover {
-    background-color: lighter(@error);
+    background-color: color-mix(in srgb, var(--error-color) 85%, transparent);
 }
 
 button.destructive-action:active {
-    background-color: darker(@error);
+    background-color: color-mix(in srgb, var(--error-color) 70%, transparent);
 }
 
 button.destructive-action:disabled {
-    background-color: alpha(@error, 0.6);
-    color: alpha(@on_primary, 0.7);
+    background-color: color-mix(in srgb, var(--error-color) 60%, transparent);
+    color: color-mix(in srgb, var(--on-primary) 70%, transparent);
 }
 
-/* Text button */
+/* Regular Button */
 button.flat {
-    background-color: transparent;
-    box-shadow: none;
-    color: @accent;
+    background-color: color-mix(in srgb, var(--text-color) 5%, transparent);
+    color: var(--text-color);
+    border: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent);
 }
 
 button.flat:hover {
-    background-color: alpha(@accent, 0.1);
-    box-shadow: none;
+    background-color: color-mix(in srgb, var(--text-color) 10%, transparent);
 }
 
 button.flat:active {
-    background-color: alpha(@accent, 0.2);
+    background-color: color-mix(in srgb, var(--accent-color) 20%, transparent);
     box-shadow: none;
 }
 
 button.flat:disabled {
-    color: @text_disabled;
+    color: var(--text-disabled-color);
     background-color: transparent;
 }
 

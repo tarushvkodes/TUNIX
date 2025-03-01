@@ -96,4 +96,23 @@ EOF
     dconf update
 fi
 
+# Set default wallpaper based on time of day
+HOUR=$(date +%H)
+if [ $HOUR -ge 18 ] || [ $HOUR -lt 6 ]; then
+    DEFAULT_WALLPAPER="tunix-dark.png"
+else
+    DEFAULT_WALLPAPER="tunix-light.png"
+fi
+
+# Configure default wallpaper
+cat > /etc/dconf/db/tunix.d/90-background << EOF
+[org/gnome/desktop/background]
+picture-uri='file:///usr/share/backgrounds/tunix/$DEFAULT_WALLPAPER'
+picture-uri-dark='file:///usr/share/backgrounds/tunix/tunix-dark.png'
+picture-options='zoom'
+EOF
+
+# Update dconf database
+dconf update
+
 success "TUNIX wallpapers installed successfully"

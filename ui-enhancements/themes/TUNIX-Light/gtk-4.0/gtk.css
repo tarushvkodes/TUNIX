@@ -1,75 +1,132 @@
-/* TUNIX-Light GTK4 Theme
- * Copyright © Tarushv Kosgi 2025
- */
-
-/* Import color definitions */
+/* GTK4 Theme - TUNIX Light */
 @import url("colors.css");
 
 /* Import widget styling */
 @import url("widgets/buttons.css");
-@import url("widgets/entries.css");
 @import url("widgets/headerbar.css");
-@import url("widgets/notifications.css");
-@import url("widgets/panels.css");
-@import url("widgets/popover.css");
-@import url("widgets/switches.css");
 
-/* Base styling */
-* {
-    -gtk-icon-style: regular;
-    -gtk-icon-palette: normal;
+/* Base Styles */
+:root {
     font-family: "Noto Sans", sans-serif;
-    -gtk-dpi: 96;
+}
+
+* {
+    font-family: "Noto Sans";
 }
 
 window {
-    background-color: @background;
-    color: @on_background;
+    background-color: var(--window-bg-color);
 }
 
-.default-decoration {
-    padding: 4px;
-    min-height: 0;
+window.background {
+    background-color: var(--window-bg-color);
+    color: var(--window-fg-color);
 }
 
-dialog {
+headerbar windowhandle {
+    background-color: var(--headerbar-bg-color);
+}
+
+headerbar {
+    min-height: 38px;
+    padding: 6px;
+    background-color: var(--headerbar-bg-color);
+}
+
+button {
+    min-height: 24px;
+    padding: 6px 12px;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background-color: var(--button-color);
+}
+
+button:hover {
+    background-color: var(--button-hover);
+}
+
+button:active {
+    background-color: var(--button-active);
+}
+
+button.suggested-action {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+button.destructive-action {
+    background-color: var(--error-color);
+    color: white;
 }
 
 /* Typography */
 label {
     font-size: 14px;
+    color: var(--window-fg-color);
+}
+
+label.dim-label {
+    color: var(--text-secondary-color);
 }
 
 .title-1 {
-    font-weight: bold;
-    font-size: 24px;
+    font-weight: 800;
+    font-size: 20pt;
 }
 
 .title-2 {
-    font-weight: bold;
-    font-size: 20px;
+    font-weight: 800;
+    font-size: 15pt;
 }
 
 .title-3 {
+    font-weight: 800;
+    font-size: 12pt;
+}
+
+.title-4 {
     font-weight: bold;
-    font-size: 16px;
+    font-size: 11pt;
 }
 
 .caption {
     font-size: 12px;
-    opacity: 0.8;
+    color: var(--text-secondary-color);
+}
+
+.default-typography {
+    font-family: "Noto Sans", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+headerbar .title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-color);
 }
 
 /* Global Animations */
 @keyframes button_pressed {
-    from { background-color: alpha(@accent_bg_color, 0.5); }
-    to { background-color: alpha(@accent_bg_color, 0.3); }
+    from {
+        background-color: color-mix(in srgb, currentColor 50%, transparent);
+    }
+    to {
+        background-color: color-mix(in srgb, currentColor 30%, transparent);
+    }
 }
 
 /* Transitions */
 * {
     transition-property: background-color, color, border-color, box-shadow;
     transition-duration: 200ms;
+    transition-timing-function: ease-out;
+}
+
+/* Cards and Elevated Surfaces */
+.card {
+    padding: 16px;
+    border-radius: 8px;
+    background-color: var(--card-bg-color);
+    color: var(--card-fg-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }

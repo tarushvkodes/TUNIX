@@ -1,52 +1,53 @@
-// TUNIX Plymouth Script
+// TUNIX Plymouth Boot Animation
 // Copyright © Tarushv Kosgi 2025
 
 // Screen settings
 Window.SetBackgroundTopColor(0.14, 0.14, 0.14);  // Dark gray
 Window.SetBackgroundBottomColor(0.06, 0.06, 0.06);  // Darker gray
 
-// TUNIX logo
-logo.image = Image("logo.png");  // Main TUNIX logo
+// Load logo image
+logo.image = Image("tunixlogo.png");
 logo.sprite = Sprite(logo.image);
-logo.sprite.SetX(Window.GetWidth() / 2 - logo.image.GetWidth() / 2);  // Center horizontally
-logo.sprite.SetY(Window.GetHeight() / 2 - logo.image.GetHeight() / 2);  // Center vertically
 logo.opacity_angle = 0;
 
-// Progress bar
+// Screen dimensions
+screen.width = Window.GetWidth();
+screen.height = Window.GetHeight();
+
+// Center the logo
+logo.sprite.SetX(screen.width / 2 - logo.image.GetWidth() / 2);
+logo.sprite.SetY(screen.height / 2 - logo.image.GetHeight() / 2);
+
+// Progress bar properties
 progress_box.image = Image("progress_box.png");
 progress_box.sprite = Sprite(progress_box.image);
-progress_box.x = Window.GetWidth() / 2 - progress_box.image.GetWidth() / 2;
-progress_box.y = Window.GetHeight() * 0.75;
-progress_box.sprite.SetPosition(progress_box.x, progress_box.y);
+progress_box.sprite.SetX(screen.width / 2 - progress_box.image.GetWidth() / 2);
+progress_box.sprite.SetY(screen.height * 0.75);
 
 progress_bar.original_image = Image("progress_bar.png");
 progress_bar.sprite = Sprite();
-progress_bar.sprite.SetPosition(progress_box.x, progress_box.y);
+progress_bar.sprite.SetX(screen.width / 2 - progress_box.image.GetWidth() / 2);
+progress_bar.sprite.SetY(screen.height * 0.75);
 
-// Logo animation
-fun refresh_callback() {
-    if (Plymouth.GetMode() == "boot") {
-        logo.opacity_angle += 0.1;
-        opacity = Math.Sin(logo.opacity_angle);
-        
-        if (opacity < 0) {
-            opacity = 0;
-        }
-        
-        logo.sprite.SetOpacity(opacity);
-    } else {
-        logo.sprite.SetOpacity(1);
+// Animation function
+fun refresh_callback () {
+    logo.opacity_angle += 2 * 3.14 / 50;
+    if (logo.opacity_angle >= 2 * 3.14) {
+        logo.opacity_angle -= 2 * 3.14;
     }
+    
+    logo.sprite.SetOpacity(0.7 + (0.3 * Math.Sin(logo.opacity_angle)));
 }
 
 Plymouth.SetRefreshFunction(refresh_callback);
 
-// Progress bar animation
-fun progress_callback(duration, progress) {
-    progress_bar.image = progress_bar.original_image.Scale(progress_bar.original_image.GetWidth() * progress, progress_bar.original_image.GetHeight());
+// Progress bar update
+fun progress_callback (duration, progress) {
+    progress_bar.image = progress_bar.original_image.Scale(
+        progress_bar.original_image.GetWidth() * progress,
+        progress_bar.original_image.GetHeight()
+    );
     progress_bar.sprite.SetImage(progress_bar.image);
-    
-    return 0;
 }
 
 Plymouth.SetBootProgressFunction(progress_callback);

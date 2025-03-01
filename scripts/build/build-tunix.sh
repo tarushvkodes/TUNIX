@@ -1,259 +1,148 @@
 #!/bin/bash
+
 # TUNIX Build Script
 # Copyright © Tarushv Kosgi 2025
-# This script transforms a base Ubuntu installation into TUNIX
 
-set -e  # Exit on any error
+set -e
 
 # Configuration
-WORK_DIR="$(pwd)/tunix-build"
-UBUNTU_ISO="ubuntu-22.04-desktop-amd64.iso"  # Update as needed
-MOUNT_DIR="$WORK_DIR/mnt"
-EXTRACT_DIR="$WORK_DIR/extract"
+WORK_DIR="/tmp/tunix-build"
 CHROOT_DIR="$WORK_DIR/chroot"
-OUTPUT_ISO="$WORK_DIR/tunix-os.iso"
-PROJECT_ROOT="$(pwd)"
+ISO_DIR="$WORK_DIR/iso"
+OUTPUT_DIR="$(pwd)/output"
+LOG_FILE="$OUTPUT_DIR/build.log"
+UBUNTU_URL="https://releases.ubuntu.com/22.04/ubuntu-22.04.3-desktop-amd64.iso"
+ISO_NAME="tunix-22.04.iso"
 
-# Color output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-log() {
-    echo -e "${BLUE}[TUNIX]${NC} $1"
+log_message() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
-error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-    exit 1
-}
-
-success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-# Check for required tools
 check_requirements() {
-    log "Checking requirements..."
-    for cmd in debootstrap squashfs-tools xorriso isolinux rsync wget; do
-        if ! command -v $cmd &> /dev/null; then
-            error "$cmd is required but not installed. Please install it and try again."
+    log_message "Checking build requirements..."
+    
+    # Check for root privileges
+    if [ "$EUID" -ne 0 ]; then
+        echo "Please run as root"
+        exit 1
+    }
+    
+    # Check required packages
+    REQUIRED_PKGS="debootstrap squashfs-tools xorriso isolinux"
+    for pkg in $REQUIRED_PKGS; do
+        if ! dpkg -l | grep -q "^ii  $pkg "; then
+            apt-get install -y "$pkg"
         fi
     done
-    success "All required tools are available"
 }
 
-# Prepare working environment
-prepare_environment() {
-    log "Preparing build environment..."
-    mkdir -p "$WORK_DIR" "$MOUNT_DIR" "$EXTRACT_DIR" "$CHROOT_DIR"
+prepare_workspace() {
+    log_message "Preparing workspace..."
+    
+    # Create working directories
+    mkdir -p "$WORK_DIR" "$CHROOT_DIR" "$ISO_DIR" "$OUTPUT_DIR"
     
     # Download Ubuntu ISO if not present
-    if [ ! -f "$WORK_DIR/$UBUNTU_ISO" ]; then
-        log "Downloading Ubuntu ISO..."
-        wget -O "$WORK_DIR/$UBUNTU_ISO" "https://releases.ubuntu.com/22.04/$UBUNTU_ISO" || \
-        error "Failed to download Ubuntu ISO. Please download $UBUNTU_ISO to $WORK_DIR manually"
+    if [ ! -f "$WORK_DIR/ubuntu.iso" ]; then
+        wget -O "$WORK_DIR/ubuntu.iso" "$UBUNTU_URL"
     fi
     
-    success "Environment prepared"
+    # Mount and extract ISO
+    mount -o loop "$WORK_DIR/ubuntu.iso" "$ISO_DIR"
+    rsync --exclude=/casper/filesystem.squashfs -a "$ISO_DIR/" "$WORK_DIR/extracted_iso"
+    unsquashfs -d "$CHROOT_DIR" "$ISO_DIR/casper/filesystem.squashfs"
 }
 
-# Extract ISO contents
-extract_iso() {
-    log "Mounting and extracting Ubuntu ISO..."
-    if [ -d "$EXTRACT_DIR/casper" ]; then
-        log "ISO already extracted, skipping..."
-        return
-    fi
+customize_system() {
+    log_message "Customizing system..."
     
-    # Mount ISO
-    mount -o loop "$WORK_DIR/$UBUNTU_ISO" "$MOUNT_DIR" || error "Failed to mount ISO"
+    # Mount required filesystems for chroot
+    mount --bind /dev "$CHROOT_DIR/dev"
+    mount --bind /run "$CHROOT_DIR/run"
+    mount -t proc none "$CHROOT_DIR/proc"
+    mount -t sysfs none "$CHROOT_DIR/sys"
     
-    # Copy contents
-    rsync -av "$MOUNT_DIR/" "$EXTRACT_DIR/" || error "Failed to extract ISO contents"
+    # Copy TUNIX files into chroot
+    cp -r /usr/local/share/tunix "$CHROOT_DIR/usr/local/share/"
     
-    # Unmount
-    umount "$MOUNT_DIR"
-    
-    success "ISO contents extracted"
+    # Chroot and customize
+    chroot "$CHROOT_DIR" /bin/bash -c "
+        # Update system
+        apt-get update
+        apt-get upgrade -y
+        
+        # Install TUNIX packages
+        bash /usr/local/share/tunix/custom-packages/install-packages.sh
+        
+        # Configure UI
+        bash /usr/local/share/tunix/scripts/post-install/configure-ui.sh
+        
+        # Install Plymouth theme
+        bash /usr/local/share/tunix/branding/plymouth/install-plymouth-theme.sh
+        
+        # Optimize system
+        bash /usr/local/share/tunix/scripts/post-install/optimize-system.sh
+        
+        # Clean up
+        apt-get autoremove -y
+        apt-get clean
+        rm -rf /tmp/* /var/tmp/*
+    "
 }
 
-# Extract and prepare the squashfs filesystem
-prepare_chroot() {
-    log "Preparing chroot environment..."
+create_iso() {
+    log_message "Creating ISO image..."
     
-    # Extract the squashfs filesystem
-    if [ ! -d "$CHROOT_DIR/usr" ]; then
-        log "Extracting squashfs filesystem..."
-        unsquashfs -d "$CHROOT_DIR" "$EXTRACT_DIR/casper/filesystem.squashfs" || error "Failed to extract squashfs"
-    else
-        log "Filesystem already extracted, skipping..."
-    fi
+    # Create new squashfs
+    mksquashfs "$CHROOT_DIR" "$WORK_DIR/extracted_iso/casper/filesystem.squashfs" -comp xz
     
-    # Prepare chroot environment
-    mount --bind /dev "$CHROOT_DIR/dev" || error "Failed to bind mount /dev"
-    mount --bind /run "$CHROOT_DIR/run" || error "Failed to bind mount /run"
-    mount --bind /proc "$CHROOT_DIR/proc" || error "Failed to bind mount /proc"
-    mount --bind /sys "$CHROOT_DIR/sys" || error "Failed to bind mount /sys"
+    # Update ISO files
+    printf $(du -sx --block-size=1 "$CHROOT_DIR" | cut -f1) > "$WORK_DIR/extracted_iso/casper/filesystem.size"
     
-    success "Chroot environment prepared"
+    # Generate ISO
+    xorriso -as mkisofs \
+        -iso-level 3 \
+        -full-iso9660-filenames \
+        -volid "TUNIX" \
+        -eltorito-boot boot/grub/bios.img \
+        -no-emul-boot \
+        -boot-load-size 4 \
+        -boot-info-table \
+        --grub2-boot-info \
+        --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img \
+        -eltorito-catalog boot/grub/boot.cat \
+        -output "$OUTPUT_DIR/$ISO_NAME" \
+        -graft-points \
+        "$WORK_DIR/extracted_iso" \
+        /boot/grub/bios.img=isolinux/bios.img \
+        /EFI/BOOT/=$(pwd)/EFI/BOOT
 }
 
-# Copy TUNIX custom files into the chroot environment
-copy_tunix_files() {
-    log "Copying TUNIX custom files..."
-    
-    # Create TUNIX directories in chroot
-    mkdir -p "$CHROOT_DIR/usr/share/tunix/"{themes,icons,wallpapers,app-theming/firefox}
-    mkdir -p "$CHROOT_DIR/usr/local/bin"
-    
-    # Copy branding assets
-    cp -rv "$PROJECT_ROOT/branding"/* "$CHROOT_DIR/usr/share/tunix/" || log "No branding files to copy"
-    
-    # Copy custom packages and scripts
-    mkdir -p "$CHROOT_DIR/tmp/tunix-setup"
-    cp -v "$PROJECT_ROOT/custom-packages/package-list.txt" "$CHROOT_DIR/tmp/tunix-setup/" || log "No package list to copy"
-    cp -v "$PROJECT_ROOT/custom-packages/install-packages.sh" "$CHROOT_DIR/tmp/tunix-setup/" || log "No install script to copy"
-    chmod +x "$CHROOT_DIR/tmp/tunix-setup/install-packages.sh"
-    
-    # Copy post-install scripts
-    cp -v "$PROJECT_ROOT/scripts/post-install/configure-ui.sh" "$CHROOT_DIR/usr/local/bin/tunix-configure-ui" || log "No UI configuration script to copy"
-    chmod +x "$CHROOT_DIR/usr/local/bin/tunix-configure-ui"
-    
-    success "TUNIX files copied into chroot environment"
-}
-
-# Apply TUNIX customizations within the chroot environment
-apply_customizations() {
-    log "Applying TUNIX customizations..."
-    
-    # Run commands inside chroot
-    chroot "$CHROOT_DIR" /bin/bash -c "cd /tmp/tunix-setup && ./install-packages.sh" || error "Failed to run package installation"
-    
-    # Set up first boot configuration
-    cat > "$CHROOT_DIR/etc/xdg/autostart/tunix-first-setup.desktop" << EOF
-[Desktop Entry]
-Name=TUNIX First Boot Setup
-Exec=/usr/local/bin/tunix-configure-ui
-Terminal=false
-Type=Application
-StartupNotify=true
-NoDisplay=true
-X-GNOME-Autostart-Phase=Applications
-EOF
-    
-    # Update system information
-    echo "TUNIX" > "$CHROOT_DIR/etc/hostname"
-    sed -i 's/Ubuntu/TUNIX/g' "$CHROOT_DIR/etc/issue"
-    sed -i 's/Ubuntu/TUNIX/g' "$CHROOT_DIR/etc/issue.net"
-    sed -i 's/Ubuntu/TUNIX/g' "$CHROOT_DIR/etc/lsb-release"
-    sed -i 's/ubuntu/tunix/g' "$CHROOT_DIR/etc/apt/sources.list"
-    
-    # Update GRUB theme
-    sed -i 's/GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR="TUNIX"/g' "$CHROOT_DIR/etc/default/grub"
-    sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"/g' "$CHROOT_DIR/etc/default/grub"
-    
-    # Update Plymouth theme
-    chroot "$CHROOT_DIR" /bin/bash -c "update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth /usr/share/tunix/plymouth/tunix.plymouth 100"
-    chroot "$CHROOT_DIR" /bin/bash -c "update-alternatives --set default.plymouth /usr/share/tunix/plymouth/tunix.plymouth"
-    chroot "$CHROOT_DIR" /bin/bash -c "update-initramfs -u"
-    
-    success "TUNIX customizations applied"
-}
-
-# Clean up the chroot environment
-cleanup_chroot() {
-    log "Cleaning up chroot environment..."
-    
-    # Clean apt cache
-    chroot "$CHROOT_DIR" /bin/bash -c "apt-get clean"
-    
-    # Remove temporary files
-    rm -rf "$CHROOT_DIR/tmp/tunix-setup"
+cleanup() {
+    log_message "Cleaning up..."
     
     # Unmount filesystems
-    umount "$CHROOT_DIR/sys"
-    umount "$CHROOT_DIR/proc"
-    umount "$CHROOT_DIR/run"
-    umount "$CHROOT_DIR/dev"
+    umount "$CHROOT_DIR/dev" || true
+    umount "$CHROOT_DIR/run" || true
+    umount "$CHROOT_DIR/proc" || true
+    umount "$CHROOT_DIR/sys" || true
+    umount "$ISO_DIR" || true
     
-    success "Chroot environment cleaned up"
+    # Remove work directory
+    rm -rf "$WORK_DIR"
 }
 
-# Rebuild squashfs and ISO
-build_iso() {
-    log "Building TUNIX ISO..."
-    
-    # Rebuild squashfs
-    log "Creating squashfs filesystem... (this may take a while)"
-    rm -f "$EXTRACT_DIR/casper/filesystem.squashfs"
-    mksquashfs "$CHROOT_DIR" "$EXTRACT_DIR/casper/filesystem.squashfs" -comp xz -Xbcj x86 || error "Failed to create squashfs"
-    
-    # Update filesystem size
-    log "Updating filesystem size..."
-    printf $(du -sx --block-size=1 "$CHROOT_DIR" | cut -f1) > "$EXTRACT_DIR/casper/filesystem.size"
-    
-    # Update ISO data
-    sed -i 's/Ubuntu/TUNIX/g' "$EXTRACT_DIR/README.diskdefines"
-    
-    # Update isolinux configuration
-    if [ -d "$EXTRACT_DIR/isolinux" ]; then
-        sed -i 's/Ubuntu/TUNIX/g' "$EXTRACT_DIR/isolinux/txt.cfg"
-        cp "$PROJECT_ROOT/branding/splash.png" "$EXTRACT_DIR/isolinux/splash.png" || log "No custom splash screen found"
-    fi
-    
-    # Update GRUB configuration
-    if [ -d "$EXTRACT_DIR/boot/grub" ]; then
-        sed -i 's/Ubuntu/TUNIX/g' "$EXTRACT_DIR/boot/grub/grub.cfg"
-        cp "$PROJECT_ROOT/branding/grub-background.png" "$EXTRACT_DIR/boot/grub/grub-background.png" || log "No custom GRUB background found"
-    fi
-    
-    # Create TUNIX version file
-    echo "TUNIX 1.0 Alpha" > "$EXTRACT_DIR/tunix-version"
-    
-    # Rebuild ISO
-    log "Creating ISO image... (this may take a while)"
-    cd "$EXTRACT_DIR"
-    
-    # Create md5sum.txt
-    find . -type f -not -path "./md5sum.txt" -not -path "./boot/*" -not -path "./EFI/*" -exec md5sum {} \; > md5sum.txt
-    
-    # Build the ISO
-    xorriso -as mkisofs -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin \
-        -c isolinux/boot.cat -b isolinux/isolinux.bin -no-emul-boot \
-        -boot-load-size 4 -boot-info-table -eltorito-alt-boot \
-        -e boot/grub/efi.img -no-emul-boot -isohybrid-gpt-basdat \
-        -V "TUNIX_OS" \
-        -o "$OUTPUT_ISO" . || error "Failed to create ISO image"
-    
-    success "TUNIX ISO built successfully at $OUTPUT_ISO"
-}
-
-# Main execution
 main() {
-    log "Starting TUNIX build process..."
-    
-    # Get start time
-    BUILD_START=$(date +%s)
+    log_message "Starting TUNIX build process"
     
     check_requirements
-    prepare_environment
-    extract_iso
-    prepare_chroot
-    copy_tunix_files
-    apply_customizations
-    cleanup_chroot
-    build_iso
+    prepare_workspace
+    customize_system
+    create_iso
+    cleanup
     
-    # Calculate build duration
-    BUILD_END=$(date +%s)
-    BUILD_DURATION=$((BUILD_END - BUILD_START))
-    BUILD_MINUTES=$((BUILD_DURATION / 60))
-    BUILD_SECONDS=$((BUILD_DURATION % 60))
-    
-    success "TUNIX build completed successfully in ${BUILD_MINUTES}m ${BUILD_SECONDS}s"
-    log "TUNIX ISO is available at: $OUTPUT_ISO"
+    log_message "Build completed successfully. ISO available at: $OUTPUT_DIR/$ISO_NAME"
 }
 
-main "$@"
+trap cleanup EXIT
+main

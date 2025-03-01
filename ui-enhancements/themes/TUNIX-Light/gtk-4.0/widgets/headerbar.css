@@ -1,21 +1,19 @@
-/* TUNIX-Light Headerbar Styles
- * Copyright © Tarushv Kosgi 2025
- */
+/* Headerbar Styles for TUNIX Light Theme
+ * Copyright © Tarushv Kosgi 2025 */
 
 headerbar {
     min-height: 48px;
-    padding: 6px;
-    background-color: @headerbar_bg_color;
-    color: @headerbar_fg_color;
-    border-bottom: 1px solid @headerbar_border_color;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    padding: 0 8px;
+    background-color: color-mix(in srgb, var(--window-bg-color) 95%, transparent);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px color-mix(in srgb, var(--border-color) 50%, transparent);
     transition-property: background-color, box-shadow;
     transition-duration: 200ms;
 }
 
 headerbar:backdrop {
-    background-color: @headerbar_backdrop_color;
-    border-bottom-color: @divider;
+    background-color: color-mix(in srgb, var(--window-bg-color) 95%, var(--text-color) 5%);
+    border-bottom-color: var(--divider-color);
     box-shadow: none;
 }
 
@@ -33,17 +31,17 @@ headerbar button {
 }
 
 headerbar button:hover {
-    background-color: alpha(@on_background, 0.1);
+    background-color: color-mix(in srgb, var(--text-color) 10%, transparent);
     box-shadow: none;
 }
 
 headerbar button:active {
-    background-color: alpha(@on_background, 0.15);
+    background-color: color-mix(in srgb, var(--text-color) 15%, transparent);
     box-shadow: none;
 }
 
 headerbar button:backdrop {
-    color: alpha(@headerbar_fg_color, 0.7);
+    color: color-mix(in srgb, var(--headerbar-fg-color) 70%, transparent);
 }
 
 headerbar .title {
@@ -66,43 +64,70 @@ headerbar button.titlebutton {
 }
 
 headerbar button.titlebutton:hover {
-    background-color: alpha(@on_background, 0.1);
+    background-color: color-mix(in srgb, var(--on-background) 10%, transparent);
 }
 
 headerbar button.titlebutton.close {
     background-color: transparent;
-    color: @on_background;
+    color: var(--on-background);
 }
 
 headerbar button.titlebutton.close:hover {
-    background-color: @error;
-    color: @on_primary;
+    background-color: var(--error-color);
+    color: var(--on-primary);
 }
 
 headerbar button.titlebutton.maximize {
     background-color: transparent;
-    color: @on_background;
+    color: var(--on-background);
 }
 
 headerbar button.titlebutton.maximize:hover {
-    background-color: @success;
-    color: @on_primary;
+    background-color: var(--success-color);
+    color: var(--on-primary);
 }
 
 headerbar button.titlebutton.minimize {
     background-color: transparent;
-    color: @on_background;
+    color: var(--on-background);
 }
 
 headerbar button.titlebutton.minimize:hover {
-    background-color: @warning;
-    color: @on_primary;
+    background-color: var(--warning-color);
+    color: var(--on-primary);
+}
+
+headerbar windowcontrols {
+    margin: 0 8px;
+}
+
+headerbar windowcontrols button {
+    min-height: 28px;
+    min-width: 28px;
+    padding: 0;
+    margin: 0 2px;
+    border-radius: 50%;
+}
+
+headerbar windowcontrols button.close {
+    background-color: var(--error-color);
+    color: white;
+}
+
+headerbar windowcontrols button.maximize {
+    background-color: var(--success-color);
+    color: white;
+}
+
+headerbar windowcontrols button.minimize {
+    background-color: var(--warning-color);
+    color: white;
 }
 
 /* Path bar */
 headerbar .path-bar-box {
     border-radius: 8px;
-    background-color: alpha(@on_background, 0.05);
+    background-color: color-mix(in srgb, var(--on-background) 5%, transparent);
 }
 
 headerbar .path-bar button {
@@ -113,7 +138,7 @@ headerbar .path-bar button {
 
 headerbar .path-bar button:checked {
     background-color: transparent;
-    box-shadow: inset 0 -2px 0 @accent;
+    box-shadow: inset 0 -2px 0 var(--accent-color);
 }
 
 /* Popup menus in headerbar */
@@ -123,4 +148,13 @@ headerbar menubutton > button {
 
 headerbar menubutton > button arrow {
     margin-left: 6px;
+}
+
+/* Window state variations */
+.maximized headerbar {
+    border-radius: 0;
+}
+
+.tiled headerbar {
+    border-radius: 0;
 }

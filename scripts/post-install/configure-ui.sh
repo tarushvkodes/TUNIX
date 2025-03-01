@@ -5,6 +5,11 @@
 # Set script to exit on error
 set -e
 
+LOG_FILE="/var/log/tunix-ui-config.log"
+log_message() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
 # Colors for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -22,6 +27,16 @@ error() {
 
 success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+# Install theme dependencies
+install_dependencies() {
+    log_message "Installing theme dependencies"
+    apt install -y \
+        sassc \
+        gtk2-engines-murrine \
+        gtk2-engines-pixbuf \
+        libglib2.0-dev-bin
 }
 
 # Apply GNOME shell extensions
@@ -70,6 +85,34 @@ apply_theme() {
     success "TUNIX theme applied"
 }
 
+# Configure GTK theme
+setup_gtk_theme() {
+    log_message "Setting up GTK theme"
+    
+    # Copy theme to system directory
+    mkdir -p /usr/share/themes/TUNIX-Light
+    cp -r /usr/local/share/tunix/themes/TUNIX-Light/* /usr/share/themes/TUNIX-Light/
+    
+    # Set default theme
+    cat > /etc/dconf/db/tunix.d/10-theme << EOF
+[org/gnome/desktop/interface]
+gtk-theme='TUNIX-Light'
+icon-theme='Papirus'
+cursor-theme='Adwaita'
+font-name='Noto Sans 10'
+monospace-font-name='Fira Code 10'
+document-font-name='Noto Sans 10'
+color-scheme='default'
+
+[org/gnome/desktop/wm/preferences]
+theme='TUNIX-Light'
+titlebar-font='Noto Sans Bold 10'
+
+[org/gnome/shell]
+enabled-extensions=['dash-to-dock@micxgx.gmail.com']
+EOF
+}
+
 # Configure font settings
 configure_fonts() {
     log "Configuring font settings..."
@@ -85,6 +128,36 @@ configure_fonts() {
     gsettings set org.gnome.desktop.interface font-hinting "slight"
     
     success "Font settings configured"
+}
+
+# Configure fonts
+setup_fonts() {
+    log_message "Setting up font configuration"
+    
+    # Create font configuration
+    cat > /etc/fonts/local.conf << EOF
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+    <match target="font">
+        <edit name="antialias" mode="assign">
+            <bool>true</bool>
+        </edit>
+        <edit name="hinting" mode="assign">
+            <bool>true</bool>
+        </edit>
+        <edit name="hintstyle" mode="assign">
+            <const>hintslight</const>
+        </edit>
+        <edit name="rgba" mode="assign">
+            <const>rgb</const>
+        </edit>
+        <edit name="lcdfilter" mode="assign">
+            <const>lcddefault</const>
+        </edit>
+    </match>
+</fontconfig>
+EOF
 }
 
 # Configure desktop layout
@@ -117,6 +190,29 @@ configure_desktop() {
     success "Desktop layout configured"
 }
 
+# Configure desktop layout
+setup_desktop_layout() {
+    log_message "Setting up desktop layout"
+    
+    # Desktop grid and workspace configuration
+    cat > /etc/dconf/db/tunix.d/30-workspace << EOF
+[org/gnome/mutter]
+dynamic-workspaces=true
+edge-tiling=true
+
+[org/gnome/desktop/wm/preferences]
+button-layout='close,minimize,maximize:appmenu'
+action-middle-click-titlebar='minimize'
+
+[org/gnome/shell/overrides]
+edge-tiling=true
+
+[org/gnome/desktop/peripherals/touchpad]
+tap-to-click=true
+natural-scroll=true
+EOF
+}
+
 # Configure GNOME settings
 configure_system() {
     log "Configuring system settings..."
@@ -142,6 +238,22 @@ configure_system() {
     gsettings set org.gnome.desktop.privacy old-files-age 30
     
     success "System settings configured"
+}
+
+# Configure GNOME Shell extensions
+setup_extensions() {
+    log_message "Configuring GNOME Shell extensions"
+    
+    # Dash to dock configuration
+    cat > /etc/dconf/db/tunix.d/20-dash-to-dock << EOF
+[org/gnome/shell/extensions/dash-to-dock]
+dock-position='LEFT'
+dock-fixed=true
+extend-height=true
+transparency-mode='DYNAMIC'
+custom-theme-shrink=true
+background-opacity=0.8
+EOF
 }
 
 # Install default wallpapers
@@ -193,13 +305,21 @@ configure_app_theming() {
 main() {
     log "Starting TUNIX UI configuration..."
     
+    install_dependencies
     install_extensions
     apply_theme
+    setup_gtk_theme
+    setup_extensions
     configure_fonts
+    setup_fonts
     configure_desktop
+    setup_desktop_layout
     configure_system
     install_wallpapers
     configure_app_theming
+    
+    # Update dconf database
+    dconf update
     
     success "TUNIX UI configuration completed successfully"
     log "Please log out and log back in for all changes to take effect"
